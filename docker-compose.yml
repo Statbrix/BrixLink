@@ -1,0 +1,9 @@
+services:
+  scoreboarddecoder:
+    build: .
+    image: scoreboarddecoder:latest
+    container_name: scoreboarddecoder
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - WEB_PORT=8080

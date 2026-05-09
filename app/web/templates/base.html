@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scoreboard Decoder{% block title_suffix %}{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0; background: #1a1a2e; color: #e0e0e0; min-height: 100vh;
+    }
+    header {
+      background: #16213e; padding: 0.75rem 1.5rem;
+      display: flex; align-items: center; gap: 1.5rem;
+      border-bottom: 2px solid #0f3460;
+    }
+    header h1 { margin: 0; font-size: 1.4rem; color: #e94560; letter-spacing: 1px; }
+    nav a {
+      color: #a0a0c0; text-decoration: none; padding: 0.4rem 0.8rem;
+      border-radius: 4px; font-size: 0.95rem; transition: background 0.2s;
+    }
+    nav a:hover, nav a.active { background: #0f3460; color: #e0e0e0; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .card {
+      background: #16213e; border-radius: 8px;
+      padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #0f3460;
+    }
+    .card h2 { margin: 0 0 1rem; font-size: 1.1rem; color: #e94560; text-transform: uppercase; letter-spacing: 1px; }
+    label { display: block; margin-bottom: 0.3rem; font-size: 0.88rem; color: #a0a0c0; }
+    input[type=number], select {
+      width: 100%; padding: 0.5rem 0.75rem; border-radius: 5px;
+      border: 1px solid #0f3460; background: #0d1b2a; color: #e0e0e0;
+      font-size: 0.95rem; margin-bottom: 1rem;
+    }
+    input[type=number]:focus, select:focus { outline: none; border-color: #e94560; }
+    .btn {
+      display: inline-block; padding: 0.6rem 1.4rem; border: none; border-radius: 5px;
+      cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: background 0.2s;
+    }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover { background: #c73652; }
+    .error { background: #3a1a1a; border: 1px solid #e94560; color: #ff8080; padding: 0.75rem 1rem; border-radius: 5px; margin-bottom: 1rem; }
+    .badge {
+      display: inline-block; padding: 0.2rem 0.55rem; border-radius: 12px;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.5px;
+    }
+    .badge-green { background: #1a3a2a; color: #4caf50; border: 1px solid #4caf50; }
+    .badge-yellow { background: #3a3a1a; color: #ffca28; border: 1px solid #ffca28; }
+    .badge-gray { background: #2a2a3a; color: #a0a0c0; border: 1px solid #555; }
+    pre { background: #0d1b2a; padding: 1rem; border-radius: 5px; overflow-x: auto; font-size: 0.82rem; color: #b0f0b0; margin: 0; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 0.4rem 0.6rem; color: #a0a0c0; border-bottom: 1px solid #0f3460; }
+    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #1a2a4a; font-family: monospace; }
+    tr:hover td { background: #1a2a4a; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .stat { background: #0d1b2a; border-radius: 6px; padding: 0.75rem 1rem; }
+    .stat .label { font-size: 0.75rem; color: #a0a0c0; margin-bottom: 0.25rem; }
+    .stat .value { font-size: 1.3rem; font-weight: bold; color: #e94560; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <h1>&#9654; Scoreboard Decoder</h1>
+    <nav>
+      <a href="/config" {% if request.path == '/config' %}class="active"{% endif %}>Configuration</a>
+      <a href="/status" {% if request.path == '/status' %}class="active"{% endif %}>Status</a>
+    </nav>
+  </header>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

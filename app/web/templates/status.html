@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Status{% endblock %}
+
+{% block head %}
+<style>
+  /* ── scoreboard shell ── */
+  .sb {
+    background: #0a0a0a;
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 1.2rem 1.5rem;
+    font-family: 'Courier New', monospace;
+    color: #ff9900;
+    margin-bottom: 1.5rem;
+    min-height: 120px;
+    position: relative;
+  }
+  .sb-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #555;
+    margin-bottom: 0.8rem;
+  }
+  .sb-sport-label {
+    position: absolute;
+    top: 0.7rem; right: 1rem;
+    font-size: 0.65rem;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  /* ── LED-style text ── */
+  .led { color: #ff9900; }
+  .led-dim { color: #553300; }
+  .led-green { color: #00ff44; }
+  .led-red { color: #ff3333; }
+  .led-white { color: #dddddd; }
+  .led-blue { color: #44aaff; }
+  /* ── layout helpers ── */
+  .sb-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+  .sb-teams { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem; }
+  .sb-team-name { font-size: 1.1rem; font-weight: bold; color: #ffcc44; letter-spacing: 1px; overflow: hidden; white-space: nowrap; }
+  .sb-team-name.right { text-align: right; }
+  .sb-score { font-size: 2.8rem; font-weight: bold; text-align: center; min-width: 3.5rem; line-height: 1; }
+  .sb-score-sep { font-size: 2rem; color: #444; text-align: center; }
+  .sb-info-row { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; border-top: 1px solid #1a1a1a; padding-top: 0.6rem; margin-top: 0.4rem; }
+  .sb-info-item { display: flex; flex-direction: column; align-items: center; }
+  .sb-info-label { font-size: 0.6rem; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1px; }
+  .sb-info-val { font-size: 1rem; color: #ff9900; font-weight: bold; min-width: 2rem; text-align: center; }
+  /* ── linescore ── */
+  .sb-linescore { margin-top: 0.5rem; font-size: 0.8rem; }
+  .sb-linescore table { border-collapse: collapse; width: 100%; }
+  .sb-linescore td, .sb-linescore th { padding: 2px 5px; text-align: center; border: 1px solid #1c1c1c; min-width: 1.4rem; }
+  .sb-linescore th { color: #555; font-size: 0.65rem; }
+  .sb-linescore .active-inning { color: #ffcc44; }
+  /* ── base diamonds ── */
+  .sb-bases { display: flex; align-items: center; gap: 0.3rem; font-size: 1.2rem; }
+  /* ── count pills ── */
+  .sb-count { display: flex; gap: 0.3rem; align-items: center; }
+  .sb-pip { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #555; display: inline-block; }
+  .sb-pip.on { background: #ff9900; border-color: #ff9900; }
+  .sb-pip.out { background: #ff3333; border-color: #ff3333; }
+  /* ── timeout dots ── */
+  .sb-to { display: flex; gap: 3px; }
+  .sb-to-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #555; }
+  .sb-to-dot.used { background: #ff9900; border-color: #ff9900; }
+  /* ── possession arrow ── */
+  .poss { color: #00ff44; font-size: 1.1rem; }
+  /* ── clock ── */
+  .sb-clock { font-size: 2rem; font-weight: bold; color: #ff9900; letter-spacing: 2px; }
+  .sb-clock-small { font-size: 1.1rem; color: #ff9900; font-weight: bold; }
+  /* ── bonus ── */
+  .bonus-on { color: #00ff44; font-weight: bold; }
+  .bonus-off { color: #1a1a1a; }
+  /* ── no data ── */
+  .sb-nodata { color: #333; font-size: 0.9rem; text-align: center; padding: 2rem 0; }
+  /* ── live dot ── */
+  .live-dot { display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;animation:pulse 1.5s infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  /* ── side-by-side layout ── */
+  .sb-main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media(max-width:800px){ .sb-main-layout { grid-template-columns: 1fr; } }
+  pre { background:#0d1b2a;padding:1rem;border-radius:5px;overflow:auto;font-size:0.8rem;color:#b0f0b0;margin:0;max-height:500px; }
+  table { width:100%;border-collapse:collapse;font-size:0.82rem; }
+  th { text-align:left;padding:0.4rem 0.6rem;color:#a0a0c0;border-bottom:1px solid #0f3460; }
+  td { padding:0.4rem 0.6rem;border-bottom:1px solid #1a2a4a;font-family:monospace; }
+  tr:hover td { background:#1a2a4a; }
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1rem;margin-bottom:1.5rem;}
+  .stat{background:#0d1b2a;border-radius:6px;padding:.65rem 1rem;}
+  .stat .label{font-size:.72rem;color:#a0a0c0;margin-bottom:.2rem;}
+  .stat .value{font-size:1.2rem;font-weight:bold;color:#e94560;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="label">Packets Received</div><div class="value" id="pkt-count">{{ status.udp_packets_received }}</div></div>
+  <div class="stat"><div class="label">Frames Decoded</div><div class="value" id="frm-count">{{ status.udp_frames_decoded }}</div></div>
+  <div class="stat"><div class="label">Last Packet</div><div class="value" id="last-time" style="font-size:.95rem;">—</div></div>
+  <div class="stat"><div class="label">UDP Port</div><div class="value">{{ cfg.udp_port }}</div></div>
+  <div class="stat"><div class="label">Sport</div><div class="value" style="font-size:.95rem;" id="sport-label">
+    {% if cfg.sport == 'auto' %}
+      Auto {% if status.last_json.get('sport') %}<span style="color:#4caf50">({{ status.last_json.get('sport')|capitalize }})</span>{% else %}<span style="color:#555">—</span>{% endif %}
+    {% else %}
+      {{ cfg.sport|capitalize }}
+    {% endif %}
+  </div></div>
+  <div class="stat"><div class="label">Live</div><div class="value" style="font-size:.95rem;"><span class="live-dot" id="live-dot"></span></div></div>
+</div>
+
+<div class="sb-main-layout">
+  <!-- Scoreboard panel -->
+  <div>
+    <div class="card" style="padding:0;background:transparent;border:none;">
+      <div id="scoreboard-container"></div>
+    </div>
+  </div>
+  <!-- JSON panel -->
+  <div>
+    <div class="card">
+      <h2>Decoded JSON <a href="/api/json" style="font-size:.75rem;color:#5588ff;font-weight:normal;margin-left:.5rem;">[endpoint]</a></h2>
+      <pre id="json-out">{{ status.last_json | tojson(indent=2) }}</pre>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent Raw Packets</h2>
+  <table>
+    <thead><tr><th>Time</th><th>Raw Hex</th><th>Sport</th></tr></thead>
+    <tbody id="raw-tbody">
+      {% for entry in status.raw_log %}
+      <tr>
+        <td>{{ entry.time }}</td>
+        <td style="word-break:break-all;color:#88cc88;font-size:.78rem;">{{ entry.hex }}</td>
+        <td>{% if entry.decoded %}{{ entry.decoded.get('sport','') }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Scoreboard renderers ────────────────────────────────────────────
+function pips(count, max, cls) {
+  let h = '';
+  for (let i = 0; i < max; i++)
+    h += `<span class="sb-pip ${i < count ? cls : ''}"></span>`;
+  return h;
+}
+function toDots(n, max) {
+  const used = parseInt(n) || 0;
+  let h = '<div class="sb-to">';
+  for (let i = 0; i < max; i++)
+    h += `<div class="sb-to-dot ${i < used ? 'used' : ''}"></div>`;
+  return h + '</div>';
+}
+function infoItem(label, val, cls='') {
+  return `<div class="sb-info-item"><div class="sb-info-label">${label}</div><div class="sb-info-val ${cls}">${val || '—'}</div></div>`;
+}
+
+function renderBasketball(d) {
+  const h = d.home, v = d.visitor;
+  const hScore = (h.score || '0').trim();
+  const vScore = (v.score || '0').trim();
+  return `<div class="sb">
+    <div class="sb-sport-label">Basketball</div>
+    <div class="sb-title">Scoreboard</div>
+    <div class="sb-teams">
+      <div>
+        <div class="sb-team-name">${h.name || 'HOME'}</div>
+        ${h.possession ? '<span class="poss">▶</span>' : ''}
+        ${h.bonus ? '<span class="bonus-on">BONUS</span>' : ''}
+      </div>
+      <div style="text-align:center">
+        <div style="display:flex;align-items:center;gap:.5rem;justify-content:center">
+          <div class="sb-score led">${hScore}</div>
+          <div class="sb-score-sep">–</div>
+          <div class="sb-score led">${vScore}</div>
+        </div>
+        <div style="font-size:.65rem;color:#444;margin-top:2px">HOME — VISITOR</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sb-team-name right">${v.name || 'VISITOR'}</div>
+        ${v.possession ? '<span class="poss">◀</span>' : ''}
+        ${v.bonus ? '<span class="bonus-on">BONUS</span>' : ''}
+      </div>
+    </div>
+    <div class="sb-info-row">
+      ${infoItem('Clock', `<span class="sb-clock-small">${d.clock || '—'}</span>`)}
+      ${infoItem('Period', d.period_text || d.period || '—')}
+      ${infoItem('Shot Clk', d.shot_clock || '—')}
+      ${infoItem('Status', d.clock_status === 'R' ? '<span class="led-green">RUN</span>' : '<span class="led-red">STOP</span>')}
+      ${infoItem('H Fouls', h.fouls || '0')}
+      ${infoItem('V Fouls', v.fouls || '0')}
+      ${infoItem('H Full TO', h.timeouts_full || '—')}
+      ${infoItem('H Part TO', h.timeouts_partial || '—')}
+      ${infoItem('V Full TO', v.timeouts_full || '—')}
+      ${infoItem('V Part TO', v.timeouts_partial || '—')}
+      ${d.horn ? infoItem('Horn', '<span class="led-red">🔔</span>') : ''}
+    </div>
+    ${(d.foul_player && d.foul_player.trim()) ? `<div style="font-size:.75rem;color:#aaa;margin-top:.4rem">Foul: Player #${d.foul_player} (${d.foul_count || '?'})</div>` : ''}
+  </div>`;
+}
+
+function renderFootball(d) {
+  const h = d.home, v = d.visitor;
+  const hPoss = h.possession ? '<span class="poss" style="font-size:.9rem">▶</span>' : '<span style="opacity:0;font-size:.9rem">▶</span>';
+  const vPoss = v.possession ? '<span class="poss" style="font-size:.9rem">◀</span>' : '<span style="opacity:0;font-size:.9rem">◀</span>';
+  const downDist = (d.down && d.down.trim() && d.to_go && d.to_go.trim())
+    ? `${d.down_text||d.down} &amp; ${d.to_go}${d.ball_on && d.ball_on.trim() ? ' on ' + d.ball_on : ''}`
+    : null;
+  return `<div class="sb">
+    <div class="sb-sport-label">Football</div>
+    <div class="sb-title">Scoreboard</div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;margin-bottom:.8rem">
+      <div style="text-align:left">
+        <div class="sb-team-name">${h.name || 'HOME'}</div>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem">
+          ${hPoss}
+          ${toDots(h.timeouts, 3)}
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div style="display:flex;align-items:center;gap:.6rem;justify-content:center">
+          <div class="sb-score led">${h.score || '0'}</div>
+          <div class="sb-score-sep">–</div>
+          <div class="sb-score led">${v.score || '0'}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="sb-team-name right">${v.name || 'VISITOR'}</div>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;justify-content:flex-end">
+          ${toDots(v.timeouts, 3)}
+          ${vPoss}
+        </div>
+      </div>
+    </div>
+    <div class="sb-info-row">
+      ${infoItem('Clock', `<span class="sb-clock-small">${d.clock || '—'}</span>`)}
+      ${infoItem('Quarter', d.quarter_text || d.quarter || '—')}
+      ${infoItem('Play Clk', d.play_clock || '—')}
+      ${infoItem('Status', d.clock_status === 'R' ? '<span class="led-green">RUN</span>' : '<span class="led-red">STOP</span>')}
+      ${infoItem('Down', d.down_text || d.down || '—')}
+      ${infoItem('To Go', d.to_go || '—')}
+      ${infoItem('Ball On', d.ball_on || '—')}
+    </div>
+    ${downDist ? `<div style="font-size:.82rem;color:#ffcc44;margin-top:.5rem;text-align:center;letter-spacing:.5px">${downDist}</div>` : ''}
+  </div>`;
+}
+
+function renderBaseball(d) {
+  const h = d.home, v = d.visitor;
+  const balls = parseInt(d.balls) || 0;
+  const strikes = parseInt(d.strikes) || 0;
+  const outs = parseInt(d.outs) || 0;
+  const innings = Array.from({length:9}, (_,i) => i+1);
+  return `<div class="sb">
+    <div class="sb-sport-label">Baseball</div>
+    <div class="sb-title">Scoreboard</div>
+    <div style="margin-bottom:.6rem">
+      <div style="display:flex;gap:1rem;align-items:center;margin-bottom:.3rem">
+        <div class="sb-team-name" style="min-width:5rem">${h.name || 'HOME'}</div>
+        <div class="sb-score led" style="font-size:2rem">${h.runs || '0'}</div>
+        <div style="font-size:.75rem;color:#888">R:${h.runs||0} H:${h.hits||0} E:${h.errors||0}</div>
+      </div>
+      <div style="display:flex;gap:1rem;align-items:center">
+        <div class="sb-team-name" style="min-width:5rem">${v.name || 'VISITOR'}</div>
+        <div class="sb-score led" style="font-size:2rem">${v.runs || '0'}</div>
+        <div style="font-size:.75rem;color:#888">R:${v.runs||0} H:${v.hits||0} E:${v.errors||0}</div>
+      </div>
+    </div>
+    <div class="sb-linescore">
+      <table><thead><tr>
+        <th>TEAM</th>
+        ${innings.map(i => `<th class="${(d.inning||'').trim()==String(i)?'active-inning':''}">${i}</th>`).join('')}
+        <th>R</th><th>H</th><th>E</th>
+      </tr></thead><tbody>
+        <tr><td style="color:#ffcc44">${h.name||'HOME'}</td>
+          ${innings.map(i => `<td>${(h.innings[i-1])||' '}</td>`).join('')}
+          <td class="led">${h.runs||' '}</td><td>${h.hits||' '}</td><td>${h.errors||' '}</td>
+        </tr>
+        <tr><td style="color:#ffcc44">${v.name||'VISIT'}</td>
+          ${innings.map(i => `<td>${(v.innings[i-1])||' '}</td>`).join('')}
+          <td class="led">${v.runs||' '}</td><td>${v.hits||' '}</td><td>${v.errors||' '}</td>
+        </tr>
+      </tbody></table>
+    </div>
+    <div class="sb-info-row" style="margin-top:.6rem">
+      ${infoItem('Inning', `${d.inning_half_text||''} ${d.inning||'—'}`)}
+      ${infoItem('Balls', `<div class="sb-count">${pips(balls,4,'on')}</div>`)}
+      ${infoItem('Strikes', `<div class="sb-count">${pips(strikes,3,'on')}</div>`)}
+      ${infoItem('Outs', `<div class="sb-count">${pips(outs,3,'out')}</div>`)}
+      ${infoItem('At Bat', d.at_bat || '—')}
+      ${d.hit_error && d.hit_error.trim() ? infoItem('H/E', `<span class="led-red">${d.hit_error}</span>`) : ''}
+    </div>
+  </div>`;
+}
+
+function renderSoccer(d) {
+  const h = d.home, v = d.visitor;
+  return `<div class="sb">
+    <div class="sb-sport-label">Soccer</div>
+    <div class="sb-title">Scoreboard</div>
+    <div class="sb-teams">
+      <div class="sb-team-name">${h.name || 'HOME'}</div>
+      <div style="text-align:center">
+        <div style="display:flex;align-items:center;gap:.5rem;justify-content:center">
+          <div class="sb-score led">${h.score || '0'}</div>
+          <div class="sb-score-sep">–</div>
+          <div class="sb-score led">${v.score || '0'}</div>
+        </div>
+      </div>
+      <div class="sb-team-name right">${v.name || 'VISITOR'}</div>
+    </div>
+    <div class="sb-info-row">
+      ${infoItem('Clock', `<span class="sb-clock-small">${d.clock || '—'}</span>`)}
+      ${infoItem('Period', d.period_text || d.period || '—')}
+      ${infoItem('Status', d.clock_status === 'R' ? '<span class="led-green">RUN</span>' : '<span class="led-red">STOP</span>')}
+      ${infoItem('H Shots', h.shots_on_goal || '0')}
+      ${infoItem('V Shots', v.shots_on_goal || '0')}
+    </div>
+  </div>`;
+}
+
+function renderVolleyball(d) {
+  const h = d.home, v = d.visitor;
+  return `<div class="sb">
+    <div class="sb-sport-label">Volleyball</div>
+    <div class="sb-title">Scoreboard</div>
+    <div class="sb-teams">
+      <div>
+        <div class="sb-team-name">${h.name || 'HOME'} ${h.serving ? '<span class="poss">●</span>' : ''}</div>
+        <div style="font-size:.75rem;color:#888">Sets: ${h.games_won || '0'}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="display:flex;align-items:center;gap:.5rem;justify-content:center">
+          <div class="sb-score led">${h.score || '0'}</div>
+          <div class="sb-score-sep">–</div>
+          <div class="sb-score led">${v.score || '0'}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="sb-team-name right">${v.serving ? '<span class="poss">●</span>' : ''} ${v.name || 'VISITOR'}</div>
+        <div style="font-size:.75rem;color:#888;text-align:right">Sets: ${v.games_won || '0'}</div>
+      </div>
+    </div>
+    <div class="sb-info-row">
+      ${infoItem('Clock', `<span class="sb-clock-small">${d.clock || '—'}</span>`)}
+      ${infoItem('Set', d.set || '—')}
+      ${infoItem('Game', d.game || '—')}
+      ${infoItem('H TO', h.timeouts || '—')}
+      ${infoItem('V TO', v.timeouts || '—')}
+    </div>
+  </div>`;
+}
+
+function renderHockey(d) {
+  const h = d.home, v = d.visitor;
+  const sport = (d.sport || 'hockey');
+  function pen(p) { return p ? `#${p.player} ${p.time}` : '—'; }
+  return `<div class="sb">
+    <div class="sb-sport-label">${sport.charAt(0).toUpperCase()+sport.slice(1)}</div>
+    <div class="sb-title">Scoreboard</div>
+    <div class="sb-teams">
+      <div class="sb-team-name">${h.name || 'HOME'}</div>
+      <div style="text-align:center">
+        <div style="display:flex;align-items:center;gap:.5rem;justify-content:center">
+          <div class="sb-score led">${h.score || '0'}</div>
+          <div class="sb-score-sep">–</div>
+          <div class="sb-score led">${v.score || '0'}</div>
+        </div>
+      </div>
+      <div class="sb-team-name right">${v.name || 'VISITOR'}</div>
+    </div>
+    <div class="sb-info-row">
+      ${infoItem('Clock', `<span class="sb-clock-small">${d.clock || '—'}</span>`)}
+      ${infoItem('Period', d.period || '—')}
+      ${infoItem('Shot Clk', d.shot_clock || '—')}
+      ${infoItem('Status', d.clock_status === 'R' ? '<span class="led-green">RUN</span>' : '<span class="led-red">STOP</span>')}
+      ${infoItem('H Shots', h.shots_on_goal || '0')}
+      ${infoItem('V Shots', v.shots_on_goal || '0')}
+      ${infoItem('H TO', h.timeouts || '—')}
+      ${infoItem('V TO', v.timeouts || '—')}
+      ${d.horn ? infoItem('Horn', '<span class="led-red">🔔</span>') : ''}
+    </div>
+    <div style="font-size:.75rem;color:#888;margin-top:.4rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+      <div>H Pen1: ${pen(h.penalty1)}</div><div>V Pen1: ${pen(v.penalty1)}</div>
+      <div>H Pen2: ${pen(h.penalty2)}</div><div>V Pen2: ${pen(v.penalty2)}</div>
+    </div>
+  </div>`;
+}
+
+function renderWrestling(d) {
+  const h = d.home, v = d.visitor;
+  return `<div class="sb">
+    <div class="sb-sport-label">Wrestling</div>
+    <div class="sb-title">Scoreboard</div>
+    <div class="sb-teams">
+      <div>
+        <div class="sb-team-name">${h.name || 'HOME'} ${h.advantage ? '<span class="poss">★</span>' : ''}</div>
+        <div style="font-size:.75rem;color:#888">Match: ${h.match_score || '0'}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="display:flex;align-items:center;gap:.5rem;justify-content:center">
+          <div class="sb-score led">${h.score || '0'}</div>
+          <div class="sb-score-sep">–</div>
+          <div class="sb-score led">${v.score || '0'}</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="sb-team-name right">${v.advantage ? '<span class="poss">★</span>' : ''} ${v.name || 'VISITOR'}</div>
+        <div style="font-size:.75rem;color:#888;text-align:right">Match: ${v.match_score || '0'}</div>
+      </div>
+    </div>
+    <div class="sb-info-row">
+      ${infoItem('Clock', `<span class="sb-clock-small">${d.clock || '—'}</span>`)}
+      ${infoItem('Period', d.period || '—')}
+      ${infoItem('Match #', d.match_number || '—')}
+      ${d.advantage_clock ? infoItem('Adv Clk', d.advantage_clock) : ''}
+    </div>
+  </div>`;
+}
+
+function renderSwimming(d) {
+  return `<div class="sb">
+    <div class="sb-sport-label">Swimming</div>
+    <div class="sb-title">Scoreboard</div>
+    <div style="text-align:center;padding:1rem 0">
+      <div style="font-size:.65rem;color:#555;letter-spacing:2px;text-transform:uppercase;margin-bottom:.4rem">Event Clock</div>
+      <div class="sb-clock">${d.clock || '--:--'}</div>
+    </div>
+  </div>`;
+}
+
+function renderGeneric(d) {
+  return `<div class="sb">
+    <div class="sb-sport-label">${(d.sport||'').toUpperCase()}</div>
+    <div class="sb-title">Scoreboard</div>
+    <div class="sb-nodata">Waiting for data…</div>
+  </div>`;
+}
+
+function renderScoreboard(d) {
+  if (!d || !d.sport) return `<div class="sb"><div class="sb-nodata">No data received yet</div></div>`;
+  switch (d.sport) {
+    case 'basketball': return renderBasketball(d);
+    case 'football':   return renderFootball(d);
+    case 'baseball':   return renderBaseball(d);
+    case 'soccer':     return renderSoccer(d);
+    case 'volleyball': return renderVolleyball(d);
+    case 'hockey':
+    case 'lacrosse':   return renderHockey(d);
+    case 'wrestling':  return renderWrestling(d);
+    case 'swimming':   return renderSwimming(d);
+    default:           return renderGeneric(d);
+  }
+}
+
+// ── Polling ─────────────────────────────────────────────────────────
+let lastPktCount = {{ status.udp_packets_received }};
+
+function timeSince(ts) {
+  if (!ts) return '—';
+  const s = Math.floor(Date.now()/1000 - ts);
+  if (s < 2) return 'just now';
+  if (s < 60) return s + 's ago';
+  return Math.floor(s/60) + 'm ago';
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    document.getElementById('pkt-count').textContent = d.packets_received;
+    document.getElementById('frm-count').textContent = d.frames_decoded;
+    document.getElementById('last-time').textContent = timeSince(d.last_packet_time);
+
+    if (d.packets_received !== lastPktCount) {
+      lastPktCount = d.packets_received;
+      document.getElementById('json-out').textContent = JSON.stringify(d.last_json, null, 2);
+      document.getElementById('scoreboard-container').innerHTML = renderScoreboard(d.last_json);
+      // Update auto-detect sport label
+      const sportEl = document.getElementById('sport-label');
+      if (sportEl && d.last_json && d.last_json.auto_detected && d.last_json.sport) {
+        sportEl.innerHTML = `Auto <span style="color:#4caf50">(${d.last_json.sport.charAt(0).toUpperCase()+d.last_json.sport.slice(1)})</span>`;
+      }
+      const dot = document.getElementById('live-dot');
+      dot.style.background = '#ffca28';
+      setTimeout(() => { dot.style.background = '#4caf50'; }, 200);
+    }
+  } catch(e) {}
+}
+
+// Initial render
+document.getElementById('scoreboard-container').innerHTML = renderScoreboard({{ status.last_json | tojson }});
+setInterval(poll, 1000);
+poll();
+setTimeout(() => location.reload(), 60000);
+</script>
+{% endblock %}
