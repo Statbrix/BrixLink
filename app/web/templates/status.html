@@ -76,8 +76,10 @@
   /* ── no data ── */
   .sb-nodata { color: #333; font-size: 0.9rem; text-align: center; padding: 2rem 0; }
   /* ── live dot ── */
-  .live-dot { display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;animation:pulse 1.5s infinite; }
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .live-dot { display:inline-block;width:10px;height:10px;border-radius:50%;background:#4caf50;transition:background 0.5s; }
+  .live-dot.live   { background:#4caf50; }
+  .live-dot.stale  { background:#ffca28; }
+  .live-dot.dead   { background:#e94560; }
   /* ── side-by-side layout ── */
   .sb-main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
   @media(max-width:800px){ .sb-main-layout { grid-template-columns: 1fr; } }
@@ -488,10 +490,12 @@ async function poll() {
       if (sportEl && d.last_json && d.last_json.auto_detected && d.last_json.sport) {
         sportEl.innerHTML = `Auto <span style="color:#4caf50">(${d.last_json.sport.charAt(0).toUpperCase()+d.last_json.sport.slice(1)})</span>`;
       }
-      const dot = document.getElementById('live-dot');
-      dot.style.background = '#ffca28';
-      setTimeout(() => { dot.style.background = '#4caf50'; }, 200);
     }
+
+    // Update live dot based on time since last packet
+    const dot = document.getElementById('live-dot');
+    const age = d.last_packet_time ? (Date.now() / 1000 - d.last_packet_time) : 9999;
+    dot.className = 'live-dot ' + (age < 5 ? 'live' : age < 60 ? 'stale' : 'dead');
   } catch(e) {}
 }
 
