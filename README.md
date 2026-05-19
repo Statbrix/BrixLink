@@ -1,37 +1,49 @@
-# Scoreboard Decoder
+# BrixLink
 
-Daktronics UDP scoreboard decoder. Listens for broadcast packets, decodes the protocol, and serves JSON over TCP and HTTP.
+Scoreboard controller decoder by **Statbrix**.
 
-**Supported sports:** Baseball, Basketball, Football, Soccer, Volleyball, Hockey, Lacrosse, Wrestling, Swimming, Tennis
+Listens for UDP broadcasts from Daktronics or Nevco scoreboard controllers,
+decodes the protocol, and serves structured JSON via HTTP and TCP.
 
-## Quick Start
-
-```bash
-git clone git@github.com:Shawncrew/dockerdecoder.git
-cd dockerdecoder
-docker compose up -d --build
-```
-
-Web GUI: **http://\<host\>:8080**
-
-## Configuration
-
-Open **http://\<host\>:8080/config**
-
-| Setting | Default | Description |
-|---|---|---|
-| UDP Listen Port | 21301 | Port receiving scoreboard UDP broadcasts |
-| TCP Output Port | 9100 | Port clients connect to for JSON data |
-| Sport | auto | Auto-detects from controller identifier packet |
-
-## JSON Output
-
-**HTTP:** `GET http://<host>:8080/api/json`
-
-**TCP:** Connect to port `9100` — receives latest decoded JSON per connection
-
-## Updating
+## Quick Start (Linux)
 
 ```bash
-git pull && docker compose up -d --build
+git clone https://github.com/Statbrix/BrixLink.git
+cd BrixLink
+docker compose up -d
 ```
+
+Web GUI: **http://&lt;host&gt;:8080**
+
+## Update
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+## Windows / Mac Docker Desktop
+
+`network_mode: host` is not supported on Windows or Mac Docker Desktop.
+Edit `docker-compose.yml` — comment out `network_mode: host` and add a
+ports section:
+
+```yaml
+    # network_mode: host
+    ports:
+      - "8080:8080"
+      - "9100:9100"
+      - "21300:21300/udp"
+      - "21301:21301/udp"
+```
+
+Note: UDP broadcasts cannot pass through Docker port mapping. For full
+broadcast reception, deploy on Linux.
+
+## What is BrixLink?
+
+| | |
+|---|---|
+| Web GUI | `http://<host>:8080` — configure UDP/TCP ports, sport, controller |
+| TCP JSON output | `<host>:9100` — connect to receive latest decoded JSON |
+| HTTP API | `http://<host>:8080/api/json` — same data over HTTP |
+| Image | `ghcr.io/statbrix/brixlink:latest` |
